@@ -29,6 +29,7 @@ public final class RacingDnsResolver implements DnsResolverPort {
     private final DnsCache cache;
     private final ProviderScoreboard scoreboard;
     private final Executor executor;
+    private final SingleFlight<String, DnsAnswer> singleFlight = new SingleFlight<>();
 
     public RacingDnsResolver(List<DnsProvider> providers,
                              ProviderQuery providerQuery,
@@ -54,7 +55,10 @@ public final class RacingDnsResolver implements DnsResolverPort {
     public CompletionStage<DnsAnswer> resolve(String name) {
         var cached = cache.get(name);
         if (cached.isPresent()) return CompletableFuture.completedFuture(cached.get());
+        return singleFlight.run(name, this::raceOnce);
+    }
 
+    private CompletionStage<DnsAnswer> raceOnce(String name) {
         var ordered = providers.stream()
                 .sorted((a, b) -> Double.compare(scoreboard.score(b.id()), scoreboard.score(a.id())))
                 .toList();

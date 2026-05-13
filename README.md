@@ -54,25 +54,40 @@ nexusflow/
 └── frontend/                    # React + TS + Tailwind NOC dashboard
 ```
 
-## Status
+## Status — end-to-end working slice
 
-This is the **initial scaffolding commit**. See `ARCHITECTURE.md` for the
-complete blueprint covering:
+All seven modules + control plane + dashboard are wired:
 
-1. High-level architecture diagram
-2. SOCKS5 handshake lifecycle
-3. Netty pipeline blueprint
-4. Sentinel DNS race-winner algorithm
-5. Virtual Thread integration design
+| Module | What ships |
+|---|---|
+| `aetheros-core` | Domain records, ports (DNS, forensics, lane). |
+| `aetheros-sentinel` | Race resolver (CF + Reactor), Netty wire-level provider, EWMA scoreboard, TTL cache, single-flight, JMH harness, Micrometer bindings. |
+| `aetheros-chameleon` | Read-only TLS ClientHello/SNI parser + one-shot Netty peek handler. |
+| `aetheros-bandshifter` | Lock-free token bucket, traffic classifier, per-class WFQ shaper. |
+| `aetheros-nexus` | `LaneManager` (mutable state, EWMA updates, hot-swap strategy), `UpstreamConnector`, four selection strategies. |
+| `aetheros-proxy` | Full SOCKS5 server: phase decoders, request router, `RelayHandler` with auto-read backpressure + writability resumer, integration test. |
+| `aetheros-control` | Spring Boot bootstrap, lifecycle, `/api/lanes`, `/api/sentinel`, `/api/policy`, `/api/diagnostics`, `/ws/forensics`, Prometheus. |
+| `frontend/` | Vite + React + TS + Tailwind + Framer Motion + Recharts NOC dashboard. |
 
-Modules are landed incrementally; each module ships with its own deep
-technical reasoning document under `docs/modules/`.
+See `ARCHITECTURE.md` for the design blueprint and `docs/modules/*.md` for
+per-module deep dives.
 
-## Build (once modules land)
+## Build & run
 
 ```bash
-cd backend && ./mvnw clean verify
-cd ../frontend && npm install && npm run dev
+# Backend (control plane on :8080, SOCKS5 on :1080)
+cd backend && mvn -B -DskipTests package
+java --enable-preview -jar aetheros-control/target/aetheros-control-*.jar
+
+# Frontend NOC (proxies /api and /ws/forensics to :8080)
+cd frontend && npm install && npm run dev
+
+# Docker
+docker build -f backend/Dockerfile -t aetheros backend/
+docker run --rm -p 8080:8080 -p 127.0.0.1:1080:1080 aetheros
+
+# Try it
+curl -x socks5h://127.0.0.1:1080 https://example.com -o /dev/null -v
 ```
 
 ## Safety & Scope
