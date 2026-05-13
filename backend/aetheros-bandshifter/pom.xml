@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.aetheros</groupId>
+        <artifactId>aetheros-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>aetheros-bandshifter</artifactId>
+    <name>AetherOS :: Band-Shifter (QoS + traffic classification)</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.aetheros</groupId>
+            <artifactId>aetheros-core</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
