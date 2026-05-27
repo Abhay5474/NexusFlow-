@@ -1,10 +1,12 @@
 package io.aetheros.proxy;
 
+import io.aetheros.bandshifter.ClassDistribution;
 import io.aetheros.bandshifter.Shaper;
 import io.aetheros.core.dns.DnsAnswer;
 import io.aetheros.core.dns.DnsResolverPort;
 import io.aetheros.core.forensics.ForensicsEvent;
 import io.aetheros.core.forensics.ForensicsEventPort;
+import io.aetheros.core.policy.RoutingPolicy;
 import io.aetheros.nexus.LaneManager;
 import io.aetheros.nexus.UpstreamConnector;
 import io.netty.bootstrap.ServerBootstrap;
@@ -77,7 +79,10 @@ class Socks5RoundTripIT {
         var connector = new UpstreamConnector(lanes);
         var shaper = new Shaper(10_000_000, 1_000_000);
 
-        var router = new Socks5RequestRouter(dns, connector, shaper, forensics);
+        var router = new Socks5RequestRouter(dns, connector, shaper, forensics,
+                addr -> java.util.Optional.empty(),
+                () -> RoutingPolicy.ALLOW_ALL,
+                new ClassDistribution());
         var init = new Socks5PipelineInitializer(router);
         proxy = new Socks5Server("127.0.0.1", 0, init);
         ChannelFuture cf = proxy.start().sync();

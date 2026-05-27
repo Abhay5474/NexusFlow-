@@ -33,3 +33,13 @@ export interface ProviderView {
   endpoint: string;
   score: number;
 }
+
+export interface GeoArc {
+  id: string;
+  ts: number;
+  lat: number;
+  lon: number;
+  country: string;
+  city: string;
+  domain: string;
+}

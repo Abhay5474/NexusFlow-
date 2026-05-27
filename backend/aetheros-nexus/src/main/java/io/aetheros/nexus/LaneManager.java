@@ -2,12 +2,14 @@ package io.aetheros.nexus;
 
 import io.aetheros.core.lane.Lane;
 import io.aetheros.core.lane.LaneSelectionStrategy;
+import io.aetheros.nexus.chaos.ChaosController;
 import io.aetheros.nexus.strategies.LaneStrategies;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -26,6 +28,9 @@ public final class LaneManager {
     private final AtomicReference<LaneSelectionStrategy> strategy =
             new AtomicReference<>(LaneStrategies.leastLatency());
     private final AtomicReference<String> strategyName = new AtomicReference<>("least-latency");
+    private volatile ChaosController chaos;
+
+    public void setChaos(ChaosController chaos) { this.chaos = chaos; }
 
     public LaneManager(int laneCount) {
         for (int i = 0; i < laneCount; i++) {
@@ -41,7 +46,26 @@ public final class LaneManager {
     }
 
     public Lane pick() {
-        return strategy.get().pick(snapshot());
+        return strategy.get().pick(snapshotWithChaos());
+    }
+
+    /** Apply chaos lane-kill sampling before handing the snapshot to a strategy. */
+    private List<Lane> snapshotWithChaos() {
+        var snap = snapshot();
+        ChaosController c = this.chaos;
+        if (c == null || !c.get().enabled() || c.get().laneKillProbability() <= 0) return snap;
+        double p = c.get().laneKillProbability();
+        return snap.stream()
+                .map(l -> ThreadLocalRandom.current().nextDouble() < p
+                        ? new Lane(l.id(), l.label(), l.observedLatency(), l.errorRate(), false)
+                        : l)
+                .toList();
+    }
+
+    /** Force a lane down for diagnostics / chaos UI. */
+    public void forceHealth(int laneId, boolean healthy) {
+        var l = state.get(laneId);
+        if (l != null) synchronized (l) { l.healthy = healthy; }
     }
 
     public void recordSuccess(int laneId, Duration latency) {

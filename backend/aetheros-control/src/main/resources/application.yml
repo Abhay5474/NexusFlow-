@@ -3,6 +3,22 @@ spring:
     name: aetheros-control
   main:
     allow-circular-references: true
+  datasource:
+    url: jdbc:h2:mem:aetheros;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 64
+        order_inserts: true
+  h2:
+    console:
+      enabled: false
 server:
   port: 8080
 management:
@@ -19,3 +35,11 @@ aetheros:
     bind-port: 1080
   sentinel:
     providers: [google, cloudflare, quad9, opendns, adguard]
+  nexus:
+    lanes: 4
+    strategy: least-latency
+  shaper:
+    bytes-per-second: 10000000
+    burst-bytes: 1000000
+  dvr:
+    retention-hours: 24

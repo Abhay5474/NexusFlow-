@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
     "framer-motion": "^11.5.0",
     "lucide-react": "^0.445.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-globe.gl": "^2.27.3",
     "reactflow": "^11.11.4",
     "recharts": "^2.12.7"
   },

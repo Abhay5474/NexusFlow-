@@ -17,6 +17,7 @@
         <module>aetheros-chameleon</module>
         <module>aetheros-bandshifter</module>
         <module>aetheros-nexus</module>
+        <module>aetheros-geo</module>
         <module>aetheros-proxy</module>
         <module>aetheros-control</module>
     </modules>

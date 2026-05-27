@@ -66,8 +66,12 @@ All seven modules + control plane + dashboard are wired:
 | `aetheros-bandshifter` | Lock-free token bucket, traffic classifier, per-class WFQ shaper. |
 | `aetheros-nexus` | `LaneManager` (mutable state, EWMA updates, hot-swap strategy), `UpstreamConnector`, four selection strategies. |
 | `aetheros-proxy` | Full SOCKS5 server: phase decoders, request router, `RelayHandler` with auto-read backpressure + writability resumer, integration test. |
-| `aetheros-control` | Spring Boot bootstrap, lifecycle, `/api/lanes`, `/api/sentinel`, `/api/policy`, `/api/diagnostics`, `/ws/forensics`, Prometheus. |
-| `frontend/` | Vite + React + TS + Tailwind + Framer Motion + Recharts NOC dashboard. |
+| `aetheros-geo` | MaxMind GeoLite2 reader (graceful no-MMDB fallback). |
+| `aetheros-control` | Spring Boot bootstrap, lifecycle, `/api/lanes`, `/api/sentinel`, `/api/policy{,/dsl}`, `/api/chaos`, `/api/dvr`, `/api/bandshifter`, `/api/diagnostics`, `/ws/forensics`, Prometheus, H2 + JPA DVR. |
+| `frontend/` | Vite + React + TS + Tailwind + Framer Motion + Recharts + react-globe.gl + Monaco editor; tabbed NOC with Overview · Globe · Chaos · Classify · DVR · Policy. |
+
+See `docs/modules/features-v2.md` for the 5-feature deep dive (Chaos Engine,
+3D Geo Globe, Heuristic Classifier v2, Time-Travel DVR, Zero-Trust DSL).
 
 See `ARCHITECTURE.md` for the design blueprint and `docs/modules/*.md` for
 per-module deep dives.

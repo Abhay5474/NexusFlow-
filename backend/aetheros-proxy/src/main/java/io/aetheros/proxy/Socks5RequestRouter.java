@@ -1,5 +1,7 @@
 package io.aetheros.proxy;
 
+import io.aetheros.bandshifter.ClassDistribution;
+import io.aetheros.bandshifter.HeuristicClassifier;
 import io.aetheros.bandshifter.Shaper;
 import io.aetheros.bandshifter.TrafficClass;
 import io.aetheros.bandshifter.TrafficClassifier;
@@ -8,6 +10,11 @@ import io.aetheros.core.dns.DnsAnswer;
 import io.aetheros.core.dns.DnsResolverPort;
 import io.aetheros.core.forensics.ForensicsEvent;
 import io.aetheros.core.forensics.ForensicsEventPort;
+import io.aetheros.core.geo.GeoLookupPort;
+import io.aetheros.core.geo.GeoPoint;
+import io.aetheros.core.policy.RoutingContext;
+import io.aetheros.core.policy.RoutingDecision;
+import io.aetheros.core.policy.RoutingPolicy;
 import io.aetheros.nexus.UpstreamConnector;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -24,19 +31,13 @@ import io.netty.handler.codec.socksx.v5.Socks5CommandType;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
-/**
- * SOCKS5 phase 3–6 handler: parses CONNECT, resolves DNS via Sentinel,
- * connects upstream via Nexus, sends REPLY, and stitches the two channels
- * together with {@link RelayHandler} + {@link WritabilityResumer}.
- *
- * <p>Sharable: all per-connection state is captured in the request itself
- * and the resulting handler instances; the router is stateless.
- */
 @ChannelHandler.Sharable
 public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks5CommandRequest> {
 
@@ -44,15 +45,24 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
     private final UpstreamConnector connector;
     private final Shaper shaper;
     private final ForensicsEventPort forensics;
+    private final GeoLookupPort geo;
+    private final Supplier<RoutingPolicy> policySupplier;
+    private final ClassDistribution distribution;
 
     public Socks5RequestRouter(DnsResolverPort dns,
                                UpstreamConnector connector,
                                Shaper shaper,
-                               ForensicsEventPort forensics) {
+                               ForensicsEventPort forensics,
+                               GeoLookupPort geo,
+                               Supplier<RoutingPolicy> policySupplier,
+                               ClassDistribution distribution) {
         this.dns = dns;
         this.connector = connector;
         this.shaper = shaper;
         this.forensics = forensics;
+        this.geo = geo;
+        this.policySupplier = policySupplier;
+        this.distribution = distribution;
     }
 
     @Override
@@ -64,6 +74,18 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
             return;
         }
 
+        // ── Zero-trust policy gate ───────────────────────────────────────
+        RoutingDecision decision = policySupplier.get().evaluate(
+                new RoutingContext(req.dstAddr(), req.dstPort(), LocalTime.now()));
+        if (decision instanceof RoutingDecision.Deny d) {
+            forensics.emit(new ForensicsEvent(
+                    Instant.now(), connId, ForensicsEvent.Stage.SOCKS_HANDSHAKE,
+                    "policy-deny reason=" + d.reason(),
+                    Map.of("domain", req.dstAddr(), "port", req.dstPort(), "reason", d.reason())));
+            reply(ctx, Socks5CommandStatus.FORBIDDEN, req.dstAddrType(), req.dstAddr(), req.dstPort());
+            return;
+        }
+
         resolveDestination(ctx, connId, req).whenComplete((addr, ex) -> {
             if (ex != null || addr == null) {
                 ctx.executor().execute(() ->
@@ -71,7 +93,8 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
                               req.dstAddrType(), req.dstAddr(), req.dstPort()));
                 return;
             }
-            ctx.executor().execute(() -> dial(ctx, connId, req, addr));
+            emitGeo(connId, addr, req);
+            ctx.executor().execute(() -> dial(ctx, connId, req, addr, decision));
         });
     }
 
@@ -93,16 +116,15 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
     private void dial(ChannelHandlerContext clientCtx,
                       String connId,
                       Socks5CommandRequest req,
-                      InetAddress addr) {
+                      InetAddress addr,
+                      RoutingDecision decision) {
         Channel clientCh = clientCtx.channel();
         InetSocketAddress dest = new InetSocketAddress(addr, req.dstPort());
-
         AtomicReference<String> sniRef = new AtomicReference<>();
 
         ChannelInitializer<NioSocketChannel> upstreamInit = new ChannelInitializer<>() {
             @Override protected void initChannel(NioSocketChannel ch) {
                 ch.pipeline().addLast("up-writability", new WritabilityResumer(clientCh));
-                // Relay handler installed once we know SNI / traffic class.
             }
         };
 
@@ -114,7 +136,7 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
                 return;
             }
             clientCtx.executor().execute(() ->
-                    onConnected(clientCtx, connId, req, c.channel(), c.lane().id(), sniRef));
+                    onConnected(clientCtx, connId, req, c.channel(), c.lane().id(), sniRef, decision));
         });
     }
 
@@ -123,48 +145,43 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
                              Socks5CommandRequest req,
                              Channel upstream,
                              int laneId,
-                             AtomicReference<String> sniRef) {
+                             AtomicReference<String> sniRef,
+                             RoutingDecision decision) {
         forensics.emit(new ForensicsEvent(
                 Instant.now(), connId, ForensicsEvent.Stage.LANE_PICK,
-                "lane=" + laneId,
+                "lane=" + laneId + (decision instanceof RoutingDecision.PinLane ? " pinned" : ""),
                 Map.of("laneId", laneId, "dst", req.dstAddr() + ":" + req.dstPort())));
 
-        // 1. Send SOCKS5 REPLY (success) before swapping the pipeline to relay mode.
         clientCtx.writeAndFlush(new DefaultSocks5CommandResponse(
-                Socks5CommandStatus.SUCCESS,
-                req.dstAddrType(),
-                req.dstAddr(),
-                req.dstPort()));
+                Socks5CommandStatus.SUCCESS, req.dstAddrType(), req.dstAddr(), req.dstPort()));
 
-        // 2. Pipeline mutation: strip SOCKS codecs, install Chameleon peek and Relay handler.
         var p = clientCtx.pipeline();
         p.remove("phase3-decode");
         p.remove("router");
         p.remove("socks5encoder");
 
         TrafficClass initialClass = TrafficClassifier.classify(req.dstPort(), null);
+        HeuristicClassifier classifier = new HeuristicClassifier(req.dstPort(), null);
+        if (distribution != null) distribution.incFlow(initialClass);
 
-        // Chameleon: passive SNI peek for observability + re-classification on first flight.
-        p.addLast("chameleon", new ClientHelloPeekHandler((cctx, sni) -> {
-            sni.ifPresent(s -> {
-                sniRef.set(s);
-                forensics.emit(new ForensicsEvent(
-                        Instant.now(), connId, ForensicsEvent.Stage.TLS_PEEK,
-                        "sni=" + s,
-                        Map.of("sni", s, "port", req.dstPort())));
-            });
-        }));
+        p.addLast("chameleon", new ClientHelloPeekHandler((cctx, sni) ->
+                sni.ifPresent(s -> {
+                    sniRef.set(s);
+                    // Re-classify with SNI context.
+                    HeuristicClassifier withSni = new HeuristicClassifier(req.dstPort(), s);
+                    forensics.emit(new ForensicsEvent(
+                            Instant.now(), connId, ForensicsEvent.Stage.TLS_PEEK,
+                            "sni=" + s + " class=" + withSni.current(),
+                            Map.of("sni", s, "port", req.dstPort(), "class", withSni.current().name())));
+                })));
 
-        // 3. Client → upstream relay.
         p.addLast("client-writability", new WritabilityResumer(upstream));
         p.addLast("relay-out", new RelayHandler(
-                upstream, shaper, initialClass, forensics, connId));
+                upstream, shaper, classifier, distribution, forensics, connId));
 
-        // 4. Upstream → client relay (mirror).
         upstream.pipeline().addLast("relay-in", new RelayHandler(
-                clientCtx.channel(), shaper, initialClass, forensics, connId));
+                clientCtx.channel(), shaper, classifier, distribution, forensics, connId));
 
-        // 5. Kick reads on both sides — auto-read was off on upstream.
         upstream.config().setAutoRead(true);
         upstream.read();
         clientCtx.channel().read();
@@ -179,12 +196,28 @@ public final class Socks5RequestRouter extends SimpleChannelInboundHandler<Socks
                 "winner=" + a.provider(), tags));
     }
 
+    private void emitGeo(String connId, InetAddress addr, Socks5CommandRequest req) {
+        if (geo == null) return;
+        GeoPoint pt = geo.lookup(addr).orElse(GeoPoint.UNKNOWN);
+        var tags = new HashMap<String, Object>();
+        tags.put("ip", addr.getHostAddress());
+        tags.put("lat", pt.latitude());
+        tags.put("lon", pt.longitude());
+        tags.put("country", pt.country());
+        tags.put("city", pt.city());
+        tags.put("domain", req.dstAddr());
+        tags.put("port", req.dstPort());
+        forensics.emit(new ForensicsEvent(
+                Instant.now(), connId, ForensicsEvent.Stage.DNS,
+                "geo=" + pt.country() + (pt.city().isEmpty() ? "" : "/" + pt.city()),
+                tags));
+    }
+
     private void reply(ChannelHandlerContext ctx, Socks5CommandStatus status,
                        Socks5AddressType atype, String addr, int port) {
         ctx.writeAndFlush(new DefaultSocks5CommandResponse(status, atype, addr, port));
         if (status != Socks5CommandStatus.SUCCESS) ctx.close();
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) { ctx.close(); }
+    @Override public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) { ctx.close(); }
 }
