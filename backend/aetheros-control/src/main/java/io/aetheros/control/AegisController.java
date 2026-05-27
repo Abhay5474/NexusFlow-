@@ -59,20 +59,47 @@ public class AegisController {
         ));
     }
 
+    private final java.util.Set<String> manualBlocks = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.Set<String> manualUnblocks = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     @GetMapping("/check")
     public ResponseEntity<Map<String, Object>> checkDomain(@RequestParam String domain) {
-        // Simple heuristic for demo: block known ad domains
-        boolean blocked = domain != null && (
-            domain.contains("doubleclick") || domain.contains("googlesyndication") ||
-            domain.contains("ads.") || domain.contains("tracking.") ||
-            domain.contains("telemetry") || domain.contains("analytics") ||
-            domain.contains("pixel.") || domain.contains("adservice")
-        );
-        String category = blocked ? "ADVERTISING" : "ALLOWED";
+        String lowerDomain = domain != null ? domain.toLowerCase() : "";
+        boolean blocked;
+        
+        if (manualBlocks.contains(lowerDomain)) {
+            blocked = true;
+        } else if (manualUnblocks.contains(lowerDomain)) {
+            blocked = false;
+        } else {
+            // Simple heuristic for demo: block known ad domains
+            blocked = lowerDomain.contains("doubleclick") || lowerDomain.contains("googlesyndication") ||
+                      lowerDomain.contains("ads.") || lowerDomain.contains("tracking.") ||
+                      lowerDomain.contains("telemetry") || lowerDomain.contains("analytics") ||
+                      lowerDomain.contains("pixel.") || lowerDomain.contains("adservice");
+        }
+        
+        String category = blocked ? (manualBlocks.contains(lowerDomain) ? "MANUAL_BLOCK" : "ADVERTISING") : "ALLOWED";
         return ResponseEntity.ok(Map.of(
-            "domain",   domain,
+            "domain",   lowerDomain,
             "blocked",  blocked,
             "category", category
         ));
+    }
+
+    @PostMapping("/manual-block")
+    public ResponseEntity<Map<String, String>> manualBlock(@RequestBody Map<String, String> body) {
+        String domain = body.getOrDefault("domain", "").toLowerCase();
+        manualUnblocks.remove(domain);
+        manualBlocks.add(domain);
+        return ResponseEntity.ok(Map.of("status", "blocked", "domain", domain));
+    }
+
+    @PostMapping("/manual-unblock")
+    public ResponseEntity<Map<String, String>> manualUnblock(@RequestBody Map<String, String> body) {
+        String domain = body.getOrDefault("domain", "").toLowerCase();
+        manualBlocks.remove(domain);
+        manualUnblocks.add(domain);
+        return ResponseEntity.ok(Map.of("status", "unblocked", "domain", domain));
     }
 }

@@ -17,14 +17,14 @@ export function PolicyEditor() {
   const [status, setStatus] = useState<{ ok: boolean; msg: string; version?: number } | null>(null);
 
   useEffect(() => {
-    api.policySource().then((p) => {
+    api.policy().then((p: any) => {
       if (p.source && p.source.trim().length > 0) setSource(p.source);
     }).catch(() => {});
   }, []);
 
   const install = async () => {
     try {
-      const r = await api.installPolicy(source);
+      const r: any = await api.setPolicy(source);
       setStatus({ ok: r.ok, msg: r.ok ? `installed v${r.version}` : (r.error ?? 'error'), version: r.version });
     } catch (e: any) {
       setStatus({ ok: false, msg: String(e?.message ?? e) });

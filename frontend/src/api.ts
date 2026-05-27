@@ -56,6 +56,8 @@ export const api = {
   aegisStats:       ()                  => get<AegisStats>('/api/aegis/stats'),
   aegisAddBlocklist:(url: string)       => post<void>('/api/aegis/blocklist', { url }),
   aegisCheckDomain: (domain: string)    => get<{ blocked: boolean; category: string }>(`/api/aegis/check?domain=${domain}`),
+  aegisManualBlock: (domain: string)    => post<{ status: string; domain: string }>('/api/aegis/manual-block', { domain }),
+  aegisManualUnblock: (domain: string)  => post<{ status: string; domain: string }>('/api/aegis/manual-unblock', { domain }),
 
   // NEW: IDS
   idsAlerts:    ()  => get<IdsAlert[]>('/api/ids/alerts'),

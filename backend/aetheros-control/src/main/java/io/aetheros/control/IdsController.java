@@ -39,13 +39,12 @@ public class IdsController {
 
     @GetMapping("/rules")
     public ResponseEntity<List<Map<String, Object>>> getRules() {
-        var rules = new ArrayList<>(List.of(
-            Map.of("ruleId","ET-2019401","description","Shellcode NOP sled pattern","severity","CRITICAL","action","DROP","dstPort",0),
-            Map.of("ruleId","ET-2001219","description","SQL injection UNION SELECT","severity","HIGH","action","DROP","dstPort",80),
-            Map.of("ruleId","ET-2019855","description","Directory traversal","severity","HIGH","action","DROP","dstPort",80),
-            Map.of("ruleId","ET-2018752","description","X-Forwarded-For localhost injection","severity","MEDIUM","action","LOG","dstPort",0),
-            Map.of("ruleId","ET-2034647","description","Log4Shell JNDI injection","severity","CRITICAL","action","DROP","dstPort",0)
-        ));
+        List<Map<String, Object>> rules = new ArrayList<>();
+        rules.add(Map.of("ruleId","ET-2019401","description","Shellcode NOP sled pattern","severity","CRITICAL","action","DROP","dstPort",0));
+        rules.add(Map.of("ruleId","ET-2001219","description","SQL injection UNION SELECT","severity","HIGH","action","DROP","dstPort",80));
+        rules.add(Map.of("ruleId","ET-2019855","description","Directory traversal","severity","HIGH","action","DROP","dstPort",80));
+        rules.add(Map.of("ruleId","ET-2018752","description","X-Forwarded-For localhost injection","severity","MEDIUM","action","LOG","dstPort",0));
+        rules.add(Map.of("ruleId","ET-2034647","description","Log4Shell JNDI injection","severity","CRITICAL","action","DROP","dstPort",0));
         rules.addAll(customRules);
         return ResponseEntity.ok(rules);
     }

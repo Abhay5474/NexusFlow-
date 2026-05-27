@@ -187,15 +187,18 @@ export function NexusGuide({ onTabChange }: NexusGuideProps) {
   const [stepIndex, setStepIndex] = useState(0);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
-    const { status, index, type } = data;
+    const { status, index, type, action } = data;
+    
     if (type === 'step:before') {
-      setStepIndex(index);
       // Navigate to relevant tab based on step
       if (index === 1 || index === 2) onTabChange?.('ironclad');
       else if (index === 3)           onTabChange?.('ids');
       else if (index === 4 || index === 5) onTabChange?.('aegis');
       else if (index === 6 || index === 7 || index === 8) onTabChange?.('counter');
+    } else if (type === 'step:after' || type === 'error:target_not_found') {
+      setStepIndex(index + (action === 'prev' ? -1 : 1));
     }
+    
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status as any)) {
       setRunning(false);
       setStepIndex(0);

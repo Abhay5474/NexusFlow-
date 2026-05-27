@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Rewind } from 'lucide-react';
-import { api, type DvrEvent } from '../api';
+import { api } from '../api';
+import type { ForensicsEvent } from '../types';
 
 const WINDOW_MS = 5 * 60_000;  // scrub-window length
 
 export function DvrPanel() {
   const [offsetSec, setOffsetSec] = useState(0);   // 0 = now; positive = past
-  const [events, setEvents] = useState<DvrEvent[]>([]);
+  const [events, setEvents] = useState<ForensicsEvent[]>([]);
   const [loading, setLoading] = useState(false);
 
   const { fromMs, toMs } = useMemo(() => {
@@ -16,7 +17,7 @@ export function DvrPanel() {
 
   useEffect(() => {
     setLoading(true);
-    api.dvr(fromMs, toMs).then(setEvents).catch(() => {}).finally(() => setLoading(false));
+    api.dvrEvents(fromMs, toMs).then((res: any) => setEvents(res)).catch(() => {}).finally(() => setLoading(false));
   }, [fromMs, toMs]);
 
   return (

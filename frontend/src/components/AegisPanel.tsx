@@ -148,6 +148,28 @@ export function AegisPanel() {
           >
             {checking ? '...' : 'CHECK'}
           </button>
+          <button
+            onClick={async () => {
+              if (!checkDomain.trim()) return;
+              await api.aegisManualBlock(checkDomain.trim());
+              await handleCheck();
+            }}
+            disabled={checking || !checkDomain.trim()}
+            className="px-3 py-1.5 bg-ether-err/20 border border-ether-err/50 text-ether-err rounded text-xs font-mono hover:bg-ether-err/30 transition-colors"
+          >
+            BLOCK
+          </button>
+          <button
+            onClick={async () => {
+              if (!checkDomain.trim()) return;
+              await api.aegisManualUnblock(checkDomain.trim());
+              await handleCheck();
+            }}
+            disabled={checking || !checkDomain.trim()}
+            className="px-3 py-1.5 bg-ether-ok/20 border border-ether-ok/50 text-ether-ok rounded text-xs font-mono hover:bg-ether-ok/30 transition-colors"
+          >
+            UNBLOCK
+          </button>
         </div>
         {checkResult && (
           <motion.div
