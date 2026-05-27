@@ -18,6 +18,9 @@
         <module>aetheros-bandshifter</module>
         <module>aetheros-nexus</module>
         <module>aetheros-geo</module>
+        <module>aetheros-ironclad</module>
+        <module>aetheros-aegis</module>
+        <module>aetheros-ids</module>
         <module>aetheros-proxy</module>
         <module>aetheros-control</module>
     </modules>
@@ -78,6 +81,16 @@
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.14.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.14.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
