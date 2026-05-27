@@ -4,7 +4,14 @@ export type Stage =
   | 'TLS_PEEK'
   | 'LANE_PICK'
   | 'RELAY'
-  | 'CLOSE';
+  | 'CLOSE'
+  | 'IDS_ALERT'
+  | 'AEGIS_BLOCK'
+  | 'BEACON_ALERT'
+  | 'EXFIL_BLOCK'
+  | 'QUIC_DROP'
+  | 'SHARD'
+  | 'BLACKHOLE';
 
 export interface ForensicsEvent {
   ts: string;
@@ -34,12 +41,58 @@ export interface ProviderView {
   score: number;
 }
 
-export interface GeoArc {
+export interface IdsAlert {
   id: string;
-  ts: number;
-  lat: number;
-  lon: number;
-  country: string;
-  city: string;
-  domain: string;
+  ts: string;
+  ruleId: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  payload: string;
+  action: 'LOGGED' | 'DROPPED';
+  srcIp: string;
+  dstPort: number;
+}
+
+export interface AegisStats {
+  totalBlocked: number;
+  totalAllowed: number;
+  blocklistSize: number;
+  topBlockedDomains: { domain: string; count: number }[];
+  recentBlocks: { domain: string; ts: string; category: string }[];
+}
+
+export interface IroncladStatus {
+  adapterName: string;
+  active: boolean;
+  packetsIngested: number;
+  bytesIngested: number;
+  routingTableModified: boolean;
+  virtualThreadPoolSize: number;
+}
+
+export interface BeaconAlert {
+  connectionId: string;
+  remoteHost: string;
+  intervalMs: number;
+  score: number;
+  action: 'FLAGGED' | 'DISCONNECTED';
+}
+
+export interface CounterScoreEntry {
+  pid: number;
+  processName: string;
+  bytesIn: number;
+  bytesOut: number;
+  blockedRequests: number;
+  activeConnections: number;
+  threatScore: number;
+  protocols: string[];
+}
+
+export interface ShieldFabricAlert {
+  ts: string;
+  laneId: number;
+  rttDeltaMs: number;
+  pmtuChange: number;
+  duplicateRatio: number;
+  action: 'CIPHER_ROTATE' | 'INTERFACE_MIGRATE' | 'ALERT_ONLY';
 }

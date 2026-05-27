@@ -1,65 +1,72 @@
-import type { LanesResponse, ProviderView } from './types';
+import type {
+  LanesResponse, ProviderView, IdsAlert, AegisStats,
+  IroncladStatus, CounterScoreEntry, ShieldFabricAlert
+} from './types';
 
-async function j<T>(r: Response): Promise<T> {
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080';
+const WS   = import.meta.env.VITE_WS_BASE  ?? 'ws://localhost:8080';
+
+async function get<T>(path: string): Promise<T> {
+  const r = await fetch(`${BASE}${path}`);
+  if (!r.ok) throw new Error(`GET ${path} → ${r.status}`);
   return r.json() as Promise<T>;
 }
 
-export interface ChaosState {
-  enabled: boolean;
-  laneKillProbability: number;
-  injectedLatencyMs: number;
-  dnsDropProbability: number;
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(`POST ${path} → ${r.status}`);
+  return r.json() as Promise<T>;
 }
 
-export interface DistributionSnapshot {
-  classes: { class: string; bytes: number; flows: number }[];
-}
-
-export interface DvrEvent {
-  ts: number;
-  connectionId: string;
-  stage: string;
-  decision: string;
-  tags: string;
-}
-
-export interface PolicySource {
-  version: number;
-  source: string;
+async function put<T>(path: string, body?: unknown): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(`PUT ${path} → ${r.status}`);
+  return r.json() as Promise<T>;
 }
 
 export const api = {
-  lanes:     () => fetch('/api/lanes').then(j<LanesResponse>),
-  setStrategy: (strategy: string) =>
-    fetch('/api/lanes/strategy', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ strategy }),
-    }).then(j<{ strategy: string }>),
-  providers: () => fetch('/api/sentinel/providers').then(j<ProviderView[]>),
-  health:    () => fetch('/api/diagnostics/health').then(j<unknown>),
+  // Existing
+  lanes:       ()            => get<LanesResponse>('/api/lanes'),
+  providers:   ()            => get<ProviderView[]>('/api/sentinel/providers'),
+  setStrategy: (s: string)   => put<LanesResponse>('/api/lanes/strategy', { strategy: s }),
+  chaos:       ()            => get<unknown>('/api/chaos'),
+  setChaos:    (b: unknown)  => post<unknown>('/api/chaos', b),
+  killLane:    (id: number)  => post<void>(`/api/chaos/lanes/${id}/kill`),
+  reviveLane:  (id: number)  => post<void>(`/api/chaos/lanes/${id}/revive`),
+  distribution:()            => get<unknown>('/api/bandshifter/distribution'),
+  dvrEvents:   (from: number, to: number) =>
+    get<unknown[]>(`/api/dvr/events?fromMs=${from}&toMs=${to}`),
+  policy:      ()            => get<unknown>('/api/policy/dsl'),
+  setPolicy:   (src: string) => put<unknown>('/api/policy/dsl', { source: src }),
 
-  chaos:    () => fetch('/api/chaos').then(j<ChaosState>),
-  setChaos: (s: ChaosState) =>
-    fetch('/api/chaos', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(s),
-    }).then(j<ChaosState>),
-  killLane:   (id: number) => fetch(`/api/chaos/lanes/${id}/kill`,   { method: 'POST' }).then(j<unknown>),
-  reviveLane: (id: number) => fetch(`/api/chaos/lanes/${id}/revive`, { method: 'POST' }).then(j<unknown>),
+  // NEW: IRONCLAD
+  ironcladStatus: () => get<IroncladStatus>('/api/ironclad/status'),
+  ironcladStart:  () => post<IroncladStatus>('/api/ironclad/start'),
+  ironcladStop:   () => post<IroncladStatus>('/api/ironclad/stop'),
 
-  distribution: () => fetch('/api/bandshifter/distribution').then(j<DistributionSnapshot>),
+  // NEW: AEGIS
+  aegisStats:       ()                  => get<AegisStats>('/api/aegis/stats'),
+  aegisAddBlocklist:(url: string)       => post<void>('/api/aegis/blocklist', { url }),
+  aegisCheckDomain: (domain: string)    => get<{ blocked: boolean; category: string }>(`/api/aegis/check?domain=${domain}`),
 
-  dvr: (fromMs: number, toMs: number) =>
-    fetch(`/api/dvr/events?fromMs=${fromMs}&toMs=${toMs}`).then(j<DvrEvent[]>),
+  // NEW: IDS
+  idsAlerts:    ()  => get<IdsAlert[]>('/api/ids/alerts'),
+  idsRules:     ()  => get<unknown[]>('/api/ids/rules'),
+  idsAddRule:   (rule: unknown) => post<void>('/api/ids/rules', rule),
 
-  policySource: () => fetch('/api/policy/dsl').then(j<PolicySource>),
-  installPolicy: (source: string) =>
-    fetch('/api/policy/dsl', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ source }),
-    }).then((r) => r.json() as Promise<{ ok: boolean; version?: number; error?: string }>),
+  // NEW: COUNTER-SCORE
+  counterScore: () => get<CounterScoreEntry[]>('/api/counterscore/flows'),
+
+  // NEW: SHIELD-FABRIC
+  shieldAlerts: () => get<ShieldFabricAlert[]>('/api/shield/alerts'),
+
+  websocketUrl: () => `${WS}/ws/forensics`,
 };
