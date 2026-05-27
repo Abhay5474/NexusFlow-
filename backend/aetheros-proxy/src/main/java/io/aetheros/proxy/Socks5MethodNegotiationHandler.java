@@ -5,7 +5,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.socksx.v5.Socks5AuthMethod;
 import io.netty.handler.codec.socksx.v5.Socks5CommandRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5InitialRequest;
-import io.netty.handler.codec.socksx.v5.Socks5InitialResponse;
+import io.netty.handler.codec.socksx.v5.DefaultSocks5InitialResponse;
 
 /**
  * SOCKS5 Phase 1: method negotiation (RFC 1928).
@@ -27,11 +27,11 @@ public final class Socks5MethodNegotiationHandler extends SimpleChannelInboundHa
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Socks5InitialRequest msg) {
         if (!msg.authMethods().contains(Socks5AuthMethod.NO_AUTH)) {
-            ctx.writeAndFlush(new Socks5InitialResponse(Socks5AuthMethod.UNACCEPTED))
+            ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.UNACCEPTED))
                .addListener(f -> ctx.close());
             return;
         }
-        ctx.writeAndFlush(new Socks5InitialResponse(Socks5AuthMethod.NO_AUTH));
+        ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
 
         ctx.pipeline()
            .replace("phase1-decode", "phase3-decode", new Socks5CommandRequestDecoder());

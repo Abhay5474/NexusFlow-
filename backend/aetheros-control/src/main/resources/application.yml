@@ -1,6 +1,8 @@
 spring:
   application:
     name: aetheros-control
+  main:
+    allow-circular-references: true
 server:
   port: 8080
 management:

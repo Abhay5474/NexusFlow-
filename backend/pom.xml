@@ -22,10 +22,10 @@
     </modules>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>24</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-boot.version>3.3.4</spring-boot.version>
+        <spring-boot.version>3.4.0</spring-boot.version>
         <netty.version>4.1.114.Final</netty.version>
         <reactor.version>3.6.10</reactor.version>
         <micrometer.version>1.13.6</micrometer.version>
@@ -89,10 +89,11 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                     <configuration>
-                        <release>21</release>
+                        <release>24</release>
                         <compilerArgs>
                             <arg>--enable-preview</arg>
                             <arg>-Xlint:all</arg>
+                            <arg>-parameters</arg>
                         </compilerArgs>
                     </configuration>
                 </plugin>

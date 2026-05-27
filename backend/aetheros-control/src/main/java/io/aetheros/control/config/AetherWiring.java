@@ -108,29 +108,20 @@ public class AetherWiring {
         return new Socks5PipelineInitializer(router);
     }
 
-    @Bean
+    @Bean(destroyMethod = "stop")
     public Socks5Server socks5Server(AetherProperties props, Socks5PipelineInitializer init) {
         return new Socks5Server(props.getProxy().getBindHost(), props.getProxy().getBindPort(), init);
     }
 
-    private Socks5Server proxy;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    public void setProxyForLifecycle(Socks5Server proxy) {
-        this.proxy = proxy;
+    @Bean
+    public org.springframework.boot.ApplicationRunner startProxyRunner(Socks5Server proxy) {
+        return args -> {
+            try {
+                proxy.start();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to start SOCKS5 proxy", e);
+            }
+        };
     }
 
-    @PostConstruct
-    public void startProxy() {
-        try {
-            proxy.start();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to start SOCKS5 proxy", e);
-        }
-    }
-
-    @PreDestroy
-    public void stopProxy() {
-        if (proxy != null) proxy.stop();
-    }
 }

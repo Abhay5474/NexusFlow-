@@ -37,7 +37,7 @@ public class SentinelController {
     }
 
     @GetMapping("/resolve")
-    public Mono<Map<String, Object>> resolve(@RequestParam String name) {
+    public Mono<Map<String, Object>> resolve(@RequestParam("name") String name) {
         return Mono.fromCompletionStage(resolver.resolve(name))
                 .map(this::view)
                 .onErrorResume(e -> Mono.just(Map.of("error", String.valueOf(e.getMessage()))));
@@ -50,5 +50,12 @@ public class SentinelController {
                 "latencyMs", a.latency().toMillis(),
                 "ttlSeconds", a.ttl().toSeconds(),
                 "addresses", a.addresses().stream().map(java.net.InetAddress::getHostAddress).toList());
+    }
+
+    @ExceptionHandler(Throwable.class)
+    public Mono<Map<String, Object>> handleAll(Throwable e) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        e.printStackTrace(new java.io.PrintWriter(sw));
+        return Mono.just(Map.of("error", e.getClass().getName(), "trace", sw.toString()));
     }
 }

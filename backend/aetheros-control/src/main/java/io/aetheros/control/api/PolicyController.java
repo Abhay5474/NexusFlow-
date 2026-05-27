@@ -36,7 +36,7 @@ public class PolicyController {
     }
 
     @DeleteMapping("/deny-host")
-    public Map<String, Object> removeDenyHost(@RequestParam String suffix) {
+    public Map<String, Object> removeDenyHost(@RequestParam("suffix") String suffix) {
         denyHostSuffixes.remove(suffix.toLowerCase());
         return snapshot();
     }

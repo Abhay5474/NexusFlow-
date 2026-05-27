@@ -20,9 +20,9 @@ import java.util.concurrent.Executors;
  */
 public final class RacingDnsResolver implements DnsResolverPort {
 
-    private static final Duration FAST_DEADLINE     = Duration.ofMillis(150);
-    private static final Duration EXTENDED_DEADLINE = Duration.ofMillis(400);
-    private static final Duration PER_QUERY_TIMEOUT = Duration.ofMillis(80);
+    private static final Duration FAST_DEADLINE     = Duration.ofMillis(1500);
+    private static final Duration EXTENDED_DEADLINE = Duration.ofMillis(10000);
+    private static final Duration PER_QUERY_TIMEOUT = Duration.ofMillis(5000);
 
     private final List<DnsProvider> providers;
     private final ProviderQuery providerQuery;
