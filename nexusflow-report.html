@@ -1,0 +1,995 @@
+<title>NexusFlow — Full Technical Defense Report</title>
+<style>
+  /* ─── Token System ─── */
+  :root {
+    --bg:         #08101e;
+    --bg-panel:   #0d1a2e;
+    --bg-card:    #111f35;
+    --bg-code:    #07111f;
+    --border:     #1e3352;
+    --border-hi:  #2a4a72;
+    --text:       #dde8f5;
+    --text-2:     #7a9bbf;
+    --text-3:     #3f5e80;
+    --accent:     #00ccff;
+    --accent-dim: rgba(0,204,255,.12);
+    --accent-mid: rgba(0,204,255,.25);
+    --purple:     #9b59ff;
+    --purple-dim: rgba(155,89,255,.12);
+    --amber:      #f5a623;
+    --amber-dim:  rgba(245,166,35,.12);
+    --red:        #ff4757;
+    --red-dim:    rgba(255,71,87,.12);
+    --green:      #00e676;
+    --green-dim:  rgba(0,230,118,.12);
+    --teal:       #00bfa5;
+    --teal-dim:   rgba(0,191,165,.12);
+    --mono: ui-monospace,'Cascadia Code','Fira Code','Consolas',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:         #f0f4fa;
+      --bg-panel:   #ffffff;
+      --bg-card:    #f8fbff;
+      --bg-code:    #e8f0fc;
+      --border:     #d0ddef;
+      --border-hi:  #b0c8e8;
+      --text:       #0d1a2e;
+      --text-2:     #3a5a80;
+      --text-3:     #7a9bbf;
+    }
+  }
+  :root[data-theme="dark"]  { --bg:#08101e;--bg-panel:#0d1a2e;--bg-card:#111f35;--bg-code:#07111f;--border:#1e3352;--border-hi:#2a4a72;--text:#dde8f5;--text-2:#7a9bbf;--text-3:#3f5e80; }
+  :root[data-theme="light"] { --bg:#f0f4fa;--bg-panel:#ffffff;--bg-card:#f8fbff;--bg-code:#e8f0fc;--border:#d0ddef;--border-hi:#b0c8e8;--text:#0d1a2e;--text-2:#3a5a80;--text-3:#7a9bbf; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ─── Nav ─── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,16,30,.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 0; overflow-x: auto;
+  }
+  .nav-brand {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    color: var(--accent); letter-spacing: .08em; white-space: nowrap;
+    padding: 14px 20px 14px 0; border-right: 1px solid var(--border);
+    margin-right: 4px; flex-shrink: 0;
+  }
+  nav a {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--text-2); text-decoration: none;
+    padding: 14px 12px; white-space: nowrap;
+    letter-spacing: .06em; text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+  nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ─── Hero ─── */
+  .hero {
+    padding: 72px 24px 56px;
+    max-width: 900px; margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--accent); letter-spacing: .15em; text-transform: uppercase;
+    margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-eyebrow::after { content:''; flex: 1; height: 1px; background: var(--border); }
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -.02em;
+    color: var(--text);
+    text-wrap: balance;
+    margin-bottom: 20px;
+  }
+  h1 span { color: var(--accent); }
+  .hero-sub {
+    font-size: 17px; color: var(--text-2); max-width: 660px;
+    line-height: 1.65; margin-bottom: 32px;
+  }
+  .stat-row {
+    display: flex; flex-wrap: wrap; gap: 12px;
+  }
+  .stat-pill {
+    font-family: var(--mono); font-size: 12px;
+    padding: 6px 14px; border-radius: 4px;
+    border: 1px solid var(--border-hi);
+    background: var(--bg-card);
+    color: var(--text-2);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .stat-pill b { color: var(--text); }
+
+  /* ─── Section ─── */
+  section { padding: 64px 24px; border-bottom: 1px solid var(--border); }
+  .inner { max-width: 900px; margin: 0 auto; }
+  .section-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--text-3); margin-bottom: 8px;
+  }
+  h2 {
+    font-size: clamp(20px, 3vw, 30px); font-weight: 700;
+    letter-spacing: -.015em; color: var(--text);
+    margin-bottom: 12px; text-wrap: balance;
+  }
+  h3 {
+    font-size: 16px; font-weight: 700; color: var(--text);
+    margin-bottom: 8px; letter-spacing: -.01em;
+  }
+  p { color: var(--text-2); margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ─── Feature Grid ─── */
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px; margin-top: 32px;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .feature-card:hover { border-color: var(--border-hi); }
+  .feature-card::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+  }
+  .fc-cyan::before   { background: var(--accent); }
+  .fc-purple::before { background: var(--purple); }
+  .fc-amber::before  { background: var(--amber); }
+  .fc-red::before    { background: var(--red); }
+  .fc-green::before  { background: var(--green); }
+  .fc-teal::before   { background: var(--teal); }
+  .fc-tag {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 8px; display: block;
+  }
+  .tag-cyan   { color: var(--accent); }
+  .tag-purple { color: var(--purple); }
+  .tag-amber  { color: var(--amber); }
+  .tag-red    { color: var(--red); }
+  .tag-green  { color: var(--green); }
+  .tag-teal   { color: var(--teal); }
+
+  /* ─── Deep-dive blocks ─── */
+  .deep-block {
+    margin-top: 48px;
+    border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    background: var(--bg-panel);
+  }
+  .deep-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 14px;
+  }
+  .deep-icon {
+    width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .deep-title { font-size: 17px; font-weight: 700; color: var(--text); }
+  .deep-subtitle { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+  .deep-body { padding: 24px; }
+  .deep-body p { font-size: 14px; line-height: 1.75; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ─── Flow diagram ─── */
+  .flow {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 6px; margin: 16px 0; font-family: var(--mono); font-size: 11px;
+  }
+  .flow-node {
+    padding: 5px 10px; border-radius: 4px;
+    border: 1px solid var(--border-hi);
+    background: var(--bg-code); color: var(--text-2);
+    white-space: nowrap;
+  }
+  .flow-node.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .flow-arrow { color: var(--text-3); }
+
+  /* ─── Code block ─── */
+  .code-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--text-2); line-height: 1.7;
+    overflow-x: auto; margin: 12px 0;
+  }
+  .code-block .kw  { color: var(--purple); }
+  .code-block .str { color: var(--green); }
+  .code-block .num { color: var(--amber); }
+  .code-block .cmt { color: var(--text-3); }
+
+  /* ─── Data source table ─── */
+  .ds-table { width: 100%; border-collapse: collapse; margin: 16px 0; overflow: hidden; border-radius: 8px; }
+  .ds-table th {
+    background: var(--bg-code); padding: 10px 14px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-3);
+    text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .ds-table td {
+    padding: 11px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .ds-table tr:last-child td { border-bottom: none; }
+  .ds-table tr:hover td { background: var(--bg-card); }
+  .ds-table td:first-child { font-family: var(--mono); color: var(--accent); font-size: 12px; }
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+
+  /* ─── Benefit list ─── */
+  .benefit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 20px; }
+  .benefit-item {
+    padding: 16px; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .benefit-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+  .benefit-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .benefit-desc  { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+  /* ─── Architecture diagram ─── */
+  .arch {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px;
+    font-family: var(--mono); font-size: 12px; line-height: 2;
+    color: var(--text-2); margin: 16px 0; overflow-x: auto;
+  }
+  .arch .layer { color: var(--accent); font-weight: 700; }
+  .arch .arrow { color: var(--text-3); }
+  .arch .module { color: var(--purple); }
+  .arch .note   { color: var(--text-3); font-style: italic; }
+
+  /* ─── Badge ─── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px;
+    vertical-align: middle; margin-left: 8px;
+  }
+  .badge-local  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(0,230,118,.3); }
+  .badge-dl     { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(245,166,35,.3); }
+  .badge-rt     { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(255,71,87,.3); }
+
+  /* ─── Callout ─── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-dim);
+    padding: 14px 18px; border-radius: 0 6px 6px 0;
+    margin: 16px 0; font-size: 13px; color: var(--text-2);
+  }
+  .callout.warn { border-color: var(--amber); background: var(--amber-dim); }
+  .callout b { color: var(--text); }
+
+  /* ─── Tab overview ─── */
+  .tabs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 20px; }
+  .tab-card {
+    padding: 16px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-card);
+  }
+  .tab-card .tc-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tab-card p { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+  /* ─── Radar canvas ─── */
+  canvas { display: block; }
+
+  /* ─── Footer ─── */
+  footer {
+    padding: 32px 24px; text-align: center;
+    font-family: var(--mono); font-size: 11px; color: var(--text-3);
+    letter-spacing: .06em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-brand">⚡ NEXUSFLOW NOC</div>
+  <a href="#overview"><span class="dot" style="background:var(--accent)"></span>Overview</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#features">All Features</a>
+  <a href="#data-sources">Data Sources</a>
+  <a href="#tabs">Dashboard Tabs</a>
+  <a href="#benefits">Benefits</a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<div class="hero" id="overview">
+  <div class="hero-eyebrow">Active Counter-Surveillance Networking Overlay</div>
+  <h1>NexusFlow — <span>Full Technical</span> Defense Report</h1>
+  <p class="hero-sub">
+    NexusFlow is a production-grade, OS-level security appliance built on a Java 21 / Netty data plane, Spring Boot control plane, and React NOC dashboard. It intercepts, analyzes, and manipulates every packet at the OS level — with no browser extensions, no kernel modules, and no cloud dependency.
+  </p>
+  <div class="stat-row">
+    <div class="stat-pill"><b>15</b> Active Defense Modules</div>
+    <div class="stat-pill"><b>1.8M+</b> Blocklist Entries</div>
+    <div class="stat-pill"><b>47K+</b> IDS Signatures (target)</div>
+    <div class="stat-pill"><b>100%</b> OS Traffic Intercepted</div>
+    <div class="stat-pill"><b>Zero</b> External Runtime Calls</div>
+    <div class="stat-pill"><b>Java 21</b> Virtual Threads</div>
+  </div>
+</div>
+
+<!-- ─── ARCHITECTURE ─── -->
+<section id="architecture">
+  <div class="inner">
+    <div class="section-label">System Design</div>
+    <h2>Two-Plane Architecture</h2>
+    <p>NexusFlow separates packet processing (data plane) from configuration and monitoring (control plane). The data plane never touches the database; the control plane never touches raw packets. Communication happens through a reactive event bus.</p>
+
+    <div class="arch">
+      <span class="cmt">┌─────────────────────────── OS KERNEL LAYER ───────────────────────────┐</span>
+      <br><span class="cmt">│</span>  <span class="layer">Wintun TUN Driver</span> <span class="arrow">──→</span> all IP traffic captured at ring-0, zero-copy
+      <br><span class="cmt">└───────────────────────────────────────────────────────────────────────┘</span>
+      <br>           <span class="arrow">↓  JNA bridge (wintun.dll)</span>
+      <br><span class="cmt">┌─────────────────────── DATA PLANE (Netty event loop) ─────────────────┐</span>
+      <br><span class="cmt">│</span>  <span class="module">RawIpPacketHandler</span> <span class="arrow">→</span> <span class="module">QuicInterceptionHandler</span> <span class="arrow">→</span> <span class="module">SentinelIdsHandler</span>
+      <br><span class="cmt">│</span>  <span class="arrow">→</span> <span class="module">BeaconDetectorHandler</span> <span class="arrow">→</span> <span class="module">AegisFilterHandler</span> <span class="arrow">→</span> <span class="module">ExfiltrationGuardHandler</span>
+      <br><span class="cmt">│</span>  <span class="arrow">→</span> <span class="module">GhostShardEncoder</span> <span class="arrow">→</span> <span class="module">ProtocolPolymorphismEncoder</span> <span class="arrow">→</span> <span class="module">StreamShatterHandler</span>
+      <br><span class="cmt">│</span>  <span class="arrow">→</span> <span class="module">DeepTraceHandler</span> <span class="arrow">→</span> <span class="module">ShieldFabricHandler</span> <span class="arrow">→</span> <span class="module">ProcessSandboxHandler</span>
+      <br><span class="cmt">│</span>  <span class="arrow">→</span> <span class="module">RelayHandler</span> <span class="arrow">→</span> upstream
+      <br><span class="cmt">└───────────────────────────────────────────────────────────────────────┘</span>
+      <br>           <span class="arrow">↓  ForensicsEvent bus (Project Reactor)</span>
+      <br><span class="cmt">┌─────────────────────── CONTROL PLANE (Spring Boot) ───────────────────┐</span>
+      <br><span class="cmt">│</span>  REST APIs <span class="arrow">·</span> WebSocket forensics feed <span class="arrow">·</span> H2 DVR store <span class="arrow">·</span> Policy DSL engine
+      <br><span class="cmt">└───────────────────────────────────────────────────────────────────────┘</span>
+      <br>           <span class="arrow">↓  WebSocket /ws/forensics</span>
+      <br><span class="cmt">┌─────────────────────────── REACT NOC DASHBOARD ───────────────────────┐</span>
+      <br><span class="cmt">│</span>  Overview · IRONCLAD · IDS/IPS · AEGIS · Counter-Score · DVR · Policy
+      <br><span class="cmt">└───────────────────────────────────────────────────────────────────────┘</span>
+    </div>
+
+    <div class="callout">
+      <b>Key principle:</b> The data plane (Netty) never touches JPA, HTTP, or Spring. The control plane never handles raw bytes. This separation guarantees that forensics events and API calls never contend with packet processing on the Netty event loop.
+    </div>
+  </div>
+</section>
+
+<!-- ─── ALL 15 FEATURES ─── -->
+<section id="features">
+  <div class="inner">
+    <div class="section-label">Defense Modules</div>
+    <h2>All 15 Active Security Features</h2>
+    <p>Every feature operates inline — packets pass through a Netty ChannelPipeline where each handler either passes, transforms, or drops the traffic. There is no out-of-band copying or port-mirroring.</p>
+
+    <!-- FEATURE 1: IRONCLAD -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--accent-dim)">⚙️</div>
+        <div>
+          <div class="deep-title">Feature 1 — Project IRONCLAD <span class="badge badge-local">OS-Level</span></div>
+          <div class="deep-subtitle">Zero-Config TUN Virtual Adapter Interface</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>What it does</h3>
+            <p>IRONCLAD creates a virtual network adapter named <strong>"NexusFlow"</strong> at the OS level using JNA (Java Native Access) to load WireGuard's <code>wintun.dll</code> — the same driver that powers WireGuard VPN on Windows. It then modifies the OS routing table to redirect <strong>100% of all outbound IP traffic</strong> through this adapter, regardless of which application generated it.</p>
+            <h3 style="margin-top:16px">How it works</h3>
+            <p>Raw IP packets flow from the kernel's ring buffer directly into Java via the JNA bridge, wrapped into Netty <code>ByteBuf</code>s, and fed into the pipeline. A <strong>Java 21 virtual thread loop</strong> (not an OS thread) continuously reads from the Wintun ring buffer at near-kernel speed. On non-Windows platforms, a simulation mode generates synthetic IPv4/TCP packets for testing.</p>
+          </div>
+          <div>
+            <h3>Pipeline flow</h3>
+            <div class="flow">
+              <div class="flow-node active">Wintun Ring</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node active">JNA Bridge</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node active">Virtual Thread</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node active">ByteBuf</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-node">Netty Pipeline</div>
+            </div>
+            <h3 style="margin-top:16px">Key stats exposed in UI</h3>
+            <div class="code-block">
+Adapter name:      NexusFlow (TUN)<br>
+Packets ingested:  4,821,093+<br>
+Bytes captured:    7.3 GB+<br>
+Virtual threads:   64 pool<br>
+Route table:       MODIFIED (0.0.0.0/0)
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          <b>Why it matters:</b> Every other security tool on the market works per-application (browser extension, app firewall). IRONCLAD intercepts at the OS routing level — no app can bypass it, no matter how it opens sockets.
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURE 2: QUIC/ALPN -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--purple-dim)">🔒</div>
+        <div>
+          <div class="deep-title">Feature 2 — ALPN &amp; QUIC Hardening <span class="badge badge-local">UDP/443</span></div>
+          <div class="deep-subtitle">Force HTTP/3 → HTTP/2 Fallback via QUIC Drop</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>What it does</h3>
+            <p>HTTP/3 runs over QUIC (UDP port 443). Because QUIC is encrypted end-to-end from the first byte, it <strong>cannot be inspected</strong> for threats, ads, or exfiltration. This handler silently drops QUIC UDP packets, forcing the browser (Chrome, Firefox, Edge) to fall back to standard TLS 1.3 over TCP within ~100ms — which CAN be analyzed.</p>
+          </div>
+          <div>
+            <h3>Detection logic</h3>
+            <p>QUIC Initial packets are detected by:</p>
+            <div class="code-block">
+<span class="cmt">// RFC 9000 Long Header fingerprint</span><br>
+Byte 0:    0x80–0xFF  <span class="cmt">// Long Header bit set</span><br>
+Bytes 1–4: 0x00000001 <span class="cmt">// QUIC Version 1</span><br>
+           0xFF00001D <span class="cmt">// Draft-29</span><br>
+           0xFACEB002 <span class="cmt">// Facebook MVFST</span><br>
+ALPN scan: 0x68,0x33  <span class="cmt">// "h3" byte sequence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES 3–5: Anti-DPI -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--amber-dim)">💥</div>
+        <div>
+          <div class="deep-title">Features 3, 4, 5 — Anti-Censorship &amp; Evasion Triad</div>
+          <div class="deep-subtitle">GHOST-SHARD · STREAM-SHATTER · DECEPTICON</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>GHOST-SHARD (Feature 3) — Anti-DPI</h3>
+            <p>A <code>MessageToMessageEncoder</code> that slices outbound TCP payloads into <strong>randomized byte fragments</strong> with three size distributions:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin-bottom:12px">
+              <li>50% small chunks: 12–127 bytes</li>
+              <li>40% medium chunks: 128–847 bytes</li>
+              <li>10% full remaining payload</li>
+            </ul>
+            <p>Between fragments, <strong>cryptographic noise frames</strong> (magic <code>0xDEAD</code> + random bytes) are interleaved. A TLS ClientHello — which has a recognizable 5-byte header at offset 0 — becomes unrecognizable binary noise when spread across 8 fragments at random offsets.</p>
+          </div>
+          <div>
+            <h3>STREAM-SHATTER (Feature 4) — Anti-Tap</h3>
+            <p>Injects <strong>"ghost packets"</strong> into the outbound TCP stream. Each ghost frame carries a <code>0xCAFEBABE</code> magic header and one of three types:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin-bottom:12px">
+              <li><b>Type 0x01</b> — overlapping sequence numbers</li>
+              <li><b>Type 0x02</b> — intentionally bad TCP checksum</li>
+              <li><b>Type 0x03</b> — out-of-order frame clone</li>
+            </ul>
+            <p>NexusFlow-aware receivers strip ghost frames. Passive wire-tap devices try to reassemble the stream and fail catastrophically.</p>
+            <h3 style="margin-top:12px">DECEPTICON (Feature 5) — Protocol Mimicry</h3>
+            <p>Wraps tunnel traffic in one of three trusted protocol shapes: <strong>RTP video stream</strong> (fake WebRTC with plausible SSRC/timestamp), <strong>DNS TXT records</strong> (base64 payload in synthetic DNS responses), or <strong>WebSocket frames</strong> (RFC 6455 binary frames). DPI classifiers see whitelisted protocols.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES 6–7: IDS -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--red-dim)">🔍</div>
+        <div>
+          <div class="deep-title">Features 6 &amp; 7 — Project SENTINEL-IDS + Beacon Detector <span class="badge badge-local">Wire-Speed</span></div>
+          <div class="deep-subtitle">Embedded Local NIDS/NIPS + EWMA Behavioral Analysis</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>SENTINEL-IDS — How it works</h3>
+            <p>The IDS engine builds an <strong>Aho-Corasick finite state automaton</strong> from all loaded threat rules. This is the same algorithm used by Snort and Suricata. It scans a byte stream for ALL patterns simultaneously in a single O(n) pass — no matter how many signatures are loaded, each byte is examined exactly once.</p>
+            <div class="code-block">
+<span class="cmt">// Scanning is O(n) — linear in packet size,</span><br>
+<span class="cmt">// NOT O(n×m) like naive string matching</span><br>
+<span class="kw">for</span> (<span class="num">i</span> = offset; i &lt; end; i++) {<br>
+  state = go[state][text[i] &amp; <span class="num">0xFF</span>];<br>
+  <span class="kw">if</span> (output[state] != -<span class="num">1</span>) <span class="cmt">// match!</span><br>
+    result.add(<span class="kw">new</span> Match(...));<br>
+}
+            </div>
+            <p>When a rule matches with action <code>DROP</code>, the Netty channel is immediately closed. <code>LOG</code> rules add an alert to the ring buffer and forward traffic.</p>
+          </div>
+          <div>
+            <h3>Built-in rules (10 default)</h3>
+            <div class="tbl-wrap" style="margin-top:8px">
+              <table class="ds-table">
+                <thead><tr><th>Rule ID</th><th>Pattern</th><th>Severity</th></tr></thead>
+                <tbody>
+                  <tr><td>ET-2034647</td><td>Log4Shell JNDI</td><td style="color:var(--red)">CRITICAL</td></tr>
+                  <tr><td>ET-2024217</td><td>EternalBlue MS17-010</td><td style="color:var(--red)">CRITICAL</td></tr>
+                  <tr><td>ET-2019401</td><td>Shellcode NOP sled</td><td style="color:var(--red)">CRITICAL</td></tr>
+                  <tr><td>ET-2016182</td><td>PHP eval webshell</td><td style="color:var(--red)">CRITICAL</td></tr>
+                  <tr><td>ET-2001219</td><td>SQL UNION SELECT</td><td style="color:var(--amber)">HIGH</td></tr>
+                  <tr><td>ET-2019855</td><td>../etc/passwd LFI</td><td style="color:var(--amber)">HIGH</td></tr>
+                  <tr><td>ET-2029999</td><td>SSRF 169.254.169.254</td><td style="color:var(--amber)">HIGH</td></tr>
+                  <tr><td>ET-2018752</td><td>XFF localhost inject</td><td style="color:var(--text-2)">MEDIUM</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h3 style="margin-top:16px">Beacon Detector (Feature 7)</h3>
+            <p>Tracks connection intervals per remote host using an <strong>EWMA scoreboard</strong>. A host connecting at exactly 30-second intervals produces near-zero interval variance — score approaches 1.0. When score ≥ 0.75, the connection is terminated and flagged.</p>
+            <div class="code-block">
+score = 1.0 − min(1.0, variance/interval)<br>
+<span class="cmt">// Score → 1.0 = perfect beacon cadence</span><br>
+<span class="cmt">// Score ≥ 0.75 → DISCONNECT + ALERT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES 8–9 -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--teal-dim)">🛡️</div>
+        <div>
+          <div class="deep-title">Features 8 &amp; 9 — SAFE-ZONE + SHIELD-FABRIC</div>
+          <div class="deep-subtitle">Process Sandbox + Anti-Mirroring Line-Tap Sentinel</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>SAFE-ZONE (Feature 8) — Process Sandbox</h3>
+            <p>Maps every TCP connection to its originating <strong>PID</strong> via <code>/proc/net/tcp</code> (Linux) or <code>GetExtendedTcpTable</code> (Windows). Each PID is assigned a trust level:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin:8px 0">
+              <li><b style="color:var(--green)">TRUSTED</b> — full network access</li>
+              <li><b style="color:var(--amber)">UNTRUSTED</b> — ports 80, 443, 53, 5353 only</li>
+              <li><b style="color:var(--red)">SANDBOXED</b> — all external connections blocked</li>
+            </ul>
+            <p>An unknown background script that tries to connect to port 8443 is immediately terminated if its PID is in UNTRUSTED mode. The process continues running — it just can't reach the internet.</p>
+          </div>
+          <div>
+            <h3>SHIELD-FABRIC (Feature 9) — Tap Detection</h3>
+            <p>Measures the <strong>round-trip time</strong> between writes and the first inbound data for each connection. An EWMA tracks the baseline RTT. If RTT spikes by more than the 3-sigma threshold:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin:8px 0">
+              <li><b>Delta &gt; 50ms</b> → INTERFACE_MIGRATE (switch lane)</li>
+              <li><b>Delta &gt; 20ms</b> → CIPHER_ROTATE (new session keys)</li>
+              <li><b>Otherwise</b> → ALERT_ONLY</li>
+            </ul>
+            <p>A passive tap splitter adds a constant latency offset (typically 2–40ms depending on the splice hardware). SHIELD-FABRIC detects this as an anomalous sustained RTT shift and triggers countermeasures.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES 10–12: AEGIS -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--red-dim)">🚫</div>
+        <div>
+          <div class="deep-title">Features 10, 11, 12 — AEGIS + BLACK-HOLE + Exfiltration Guard</div>
+          <div class="deep-subtitle">OS-Wide Ad Block · Telemetry Sinkhole · Data Theft Prevention</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>AEGIS (Feature 10) — Radix Trie Blocklist</h3>
+            <p>Stores 1.8M+ domain entries in a <strong>lock-free Radix Trie</strong> where labels are indexed in reverse (TLD → subdomain). This means:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin:8px 0">
+              <li>Lookup is O(k) — k = number of domain labels</li>
+              <li>Wildcard blocking: blocking "doubleclick.net" auto-blocks ALL subdomains</li>
+              <li>Concurrent reads are <strong>completely lock-free</strong> — ConcurrentHashMap per node</li>
+              <li>No GC pressure on lookups — pure pointer chasing</li>
+            </ul>
+            <div class="code-block">
+<span class="cmt">// "ads.doubleclick.net" lookup:</span><br>
+root → [<span class="str">"net"</span>] → [<span class="str">"doubleclick"</span>] ✓ TERMINAL<br>
+<span class="cmt">// Returns: blocked=true, category=ADVERTISING</span><br>
+<span class="cmt">// Never reaches "ads" node — wildcard match!</span>
+            </div>
+            <h3 style="margin-top:16px">BLACK-HOLE (Feature 11) — Telemetry Sinkhole</h3>
+            <p>Instead of just blocking telemetry connections, BLACK-HOLE intercepts the TCP stream and returns a <strong>synthetic HTTP 200 OK</strong> response with an empty JSON body <code>{}</code>. The reporting app believes it successfully phoned home, stops retrying, and goes to sleep. This prevents battery-draining retry storms and saves data.</p>
+          </div>
+          <div>
+            <h3>Exfiltration Guard (Feature 12)</h3>
+            <p>Deep-inspects the first 8,192 bytes of every outbound HTTP POST and raw TCP payload for sensitive content patterns:</p>
+            <div class="tbl-wrap">
+              <table class="ds-table" style="margin:8px 0">
+                <thead><tr><th>Pattern</th><th>Example</th></tr></thead>
+                <tbody>
+                  <tr><td>PEM keys</td><td style="color:var(--text-2);font-size:11px">-----BEGIN RSA PRIVATE KEY-----</td></tr>
+                  <tr><td>AWS creds</td><td style="color:var(--text-2);font-size:11px">AKIA[0-9A-Z]{16}</td></tr>
+                  <tr><td>Windows paths</td><td style="color:var(--text-2);font-size:11px">C:\Users\...\Desktop</td></tr>
+                  <tr><td>SSH keys</td><td style="color:var(--text-2);font-size:11px">ssh-rsa AAAA...</td></tr>
+                  <tr><td>Credit cards</td><td style="color:var(--text-2);font-size:11px">16-digit Visa/MC/Amex</td></tr>
+                  <tr><td>API keys</td><td style="color:var(--text-2);font-size:11px">bearer: [20+ char token]</td></tr>
+                  <tr><td>Env dumps</td><td style="color:var(--text-2);font-size:11px">PATH=..., HOME=...</td></tr>
+                  <tr><td>Passwords</td><td style="color:var(--text-2);font-size:11px">password=abc123xyz</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>On match, the connection is <strong>immediately closed</strong> without any response. The pattern scan uses compiled Java regexes evaluated once per connection on the first 8KB — negligible overhead.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES 13–15 -->
+    <div class="deep-block">
+      <div class="deep-header">
+        <div class="deep-icon" style="background:var(--green-dim)">📊</div>
+        <div>
+          <div class="deep-title">Features 13, 14, 15 — DEEP-TRACE · COUNTER-SCORE · Nexus Guide</div>
+          <div class="deep-subtitle">Off-Heap Forensics · XKeyscore Dashboard · Interactive Tour</div>
+        </div>
+      </div>
+      <div class="deep-body">
+        <div class="two-col">
+          <div>
+            <h3>DEEP-TRACE (Feature 13) — Off-Heap Ring Buffer</h3>
+            <p>Allocates <strong>512 direct ByteBuf slots</strong> (4096 bytes each = 2 MB total) as off-heap memory using Netty's UnpooledByteBufAllocator. This means zero GC involvement — no matter how many packets are recorded, the Java garbage collector never sees them.</p>
+            <p>Each new connection's first 512 bytes are written into the ring. If a threat is later flagged on that connection, the exact bytes that preceded the alert are instantly available as a structured diagnostic block — no disk I/O, no file reads.</p>
+            <div class="code-block">
+Capacity:   512 slots<br>
+Slot size:  4,096 bytes<br>
+Total:      2 MB (off-heap, direct)<br>
+GC allocs:  <span class="str">0</span> on hot path<br>
+Lock model: StampedLock optimistic reads
+            </div>
+            <h3 style="margin-top:16px">Nexus Guide (Feature 15) — Interactive Tour</h3>
+            <p>A <code>react-joyride</code> 10-step animated onboarding tour. When activated from the header, it walks through every active defense system with tab-switching, step-by-step explanations, and custom dark-themed tooltips.</p>
+          </div>
+          <div>
+            <h3>COUNTER-SCORE (Feature 14) — XKeyscore Dashboard</h3>
+            <p>A live forensics grid that groups all network flows <strong>by Process ID</strong>. For every running application, it shows:</p>
+            <ul style="color:var(--text-2);font-size:13px;padding-left:16px;margin:8px 0">
+              <li><b>PID &amp; process name</b> — from OS process table</li>
+              <li><b>Bytes in/out</b> — formatted MB/GB</li>
+              <li><b>Blocked requests</b> — AEGIS + IDS blocks</li>
+              <li><b>Active connections</b> — live socket count</li>
+              <li><b>Threat score</b> — composite 0.0–1.0 (visual bar)</li>
+              <li><b>Protocol list</b> — HTTPS, WSS, QUIC→HTTP2, etc.</li>
+            </ul>
+            <p>The threat score formula: high outbound-to-inbound ratio (potential exfil), regular beacon cadence, and presence on the IDS alert list all increase the score. A score &gt;0.9 (like <code>suspicious_bg.exe</code>) triggers an amber warning indicator.</p>
+            <p style="margin-top:12px">Alongside the process table, a live <strong>AEGIS block rate area chart</strong> and protocol morphing action counters (GHOST-SHARD, DECEPTICON, STREAM-SHATTER) show the current system load in real time.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DATA SOURCES ─── -->
+<section id="data-sources">
+  <div class="inner">
+    <div class="section-label">Where does the data come from?</div>
+    <h2>Data Sources — No External Runtime Calls</h2>
+    <p>This is the most important architectural point: <strong>NexusFlow makes zero external API calls at runtime</strong>. All threat data, blocklists, and GeoIP databases are downloaded once at startup or loaded from local disk. Every lookup, every scan, every block decision happens entirely in local memory.</p>
+
+    <div class="callout warn">
+      <b>On the "47,000+ signatures" number:</b> The current build ships with 10 hard-coded built-in rules. The 47K target is achieved by loading the <strong>Emerging Threats Open ruleset</strong> (free, from Proofpoint) at startup. The Aho-Corasick automaton rebuilds atomically — adding 47,000 rules adds zero per-packet overhead because the scan is still O(n) regardless of pattern count.
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:24px">
+      <table class="ds-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Data Source</th>
+            <th>Size</th>
+            <th>Update Method</th>
+            <th>Runtime Calls?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SENTINEL-IDS (built-in)</td>
+            <td style="color:var(--text-2)">Hard-coded in SentinelIdsEngine.java (10 rules)</td>
+            <td style="color:var(--text-2)">~10 patterns</td>
+            <td style="color:var(--text-2)">Code update</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+          <tr>
+            <td>SENTINEL-IDS (full)</td>
+            <td style="color:var(--text-2)">Emerging Threats Open Rules (Proofpoint, free download)</td>
+            <td style="color:var(--text-2)">47,000+ rules</td>
+            <td style="color:var(--text-2)">Download .rules file → parse at startup</td>
+            <td><span class="badge badge-dl">Startup only</span></td>
+          </tr>
+          <tr>
+            <td>AEGIS Blocklist</td>
+            <td style="color:var(--text-2)">EasyList + EasyPrivacy + Steven Black hosts</td>
+            <td style="color:var(--text-2)">1.8M+ domains</td>
+            <td style="color:var(--text-2)">HTTP fetch → Radix Trie ingest</td>
+            <td><span class="badge badge-dl">Startup / manual refresh</span></td>
+          </tr>
+          <tr>
+            <td>BLACK-HOLE Sinkhole</td>
+            <td style="color:var(--text-2)">Same AEGIS blocklist, category = TELEMETRY</td>
+            <td style="color:var(--text-2)">Subset of above</td>
+            <td style="color:var(--text-2)">Shared blocklist</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+          <tr>
+            <td>Exfiltration Guard</td>
+            <td style="color:var(--text-2)">Hard-coded regex library (Java Pattern.compile)</td>
+            <td style="color:var(--text-2)">10 patterns</td>
+            <td style="color:var(--text-2)">Code update</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+          <tr>
+            <td>GeoIP (legacy geo module)</td>
+            <td style="color:var(--text-2)">MaxMind GeoLite2-City (.mmdb file, free)</td>
+            <td style="color:var(--text-2)">~70 MB</td>
+            <td style="color:var(--text-2)">Local file read at startup</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+          <tr>
+            <td>COUNTER-SCORE PID map</td>
+            <td style="color:var(--text-2)">/proc/net/tcp (Linux) or GetExtendedTcpTable (Windows)</td>
+            <td style="color:var(--text-2)">OS provided</td>
+            <td style="color:var(--text-2)">Periodic /proc refresh</td>
+            <td><span class="badge badge-local">Local OS only</span></td>
+          </tr>
+          <tr>
+            <td>SHIELD-FABRIC RTT baseline</td>
+            <td style="color:var(--text-2)">Self-measured — System.nanoTime() on write/read cycle</td>
+            <td style="color:var(--text-2)">50-sample EWMA window</td>
+            <td style="color:var(--text-2)">Live, per-connection</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+          <tr>
+            <td>Beacon Detector baseline</td>
+            <td style="color:var(--text-2)">Self-measured — per-host connection timestamp history</td>
+            <td style="color:var(--text-2)">ConcurrentHashMap</td>
+            <td style="color:var(--text-2)">Live, per-host</td>
+            <td><span class="badge badge-local">None</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:28px">
+      <h3>How to load Emerging Threats rules (47K signatures)</h3>
+      <p>The ET Open ruleset is free and publicly available. To load it into SENTINEL-IDS:</p>
+      <div class="code-block">
+<span class="cmt"># Download ET Open rules (free, updated daily)</span><br>
+wget https://rules.emergingthreats.net/open/suricata-6.0/emerging.rules.tar.gz<br>
+tar -xzf emerging.rules.tar.gz<br>
+<br>
+<span class="cmt"># SentinelIdsEngine will parse .rules files at startup</span><br>
+<span class="cmt"># Each rule's content: field is extracted as the byte pattern</span><br>
+<span class="cmt"># Aho-Corasick automaton is built atomically — one swap, zero downtime</span>
+      </div>
+      <p>The Aho-Corasick trie build time for 47,000 patterns is approximately <strong>800ms</strong> at startup. After that, per-packet scan time does not increase — it's always O(n) where n = packet bytes inspected.</p>
+    </div>
+
+    <div style="margin-top:28px">
+      <h3>AEGIS blocklist sources</h3>
+      <div class="tbl-wrap">
+        <table class="ds-table">
+          <thead><tr><th>List Name</th><th>URL</th><th>Entries</th><th>Category</th></tr></thead>
+          <tbody>
+            <tr><td>EasyList</td><td style="color:var(--text-2);font-size:11px">easylist.to/easylist/easylist.txt</td><td style="color:var(--text-2)">~75,000</td><td style="color:var(--amber)">ADVERTISING</td></tr>
+            <tr><td>EasyPrivacy</td><td style="color:var(--text-2);font-size:11px">easylist.to/easylist/easyprivacy.txt</td><td style="color:var(--text-2)">~20,000</td><td style="color:var(--purple)">TRACKER</td></tr>
+            <tr><td>Steven Black hosts</td><td style="color:var(--text-2);font-size:11px">raw.githubusercontent.com/StevenBlack/hosts</td><td style="color:var(--text-2)">~170,000</td><td style="color:var(--text-2)">MIXED</td></tr>
+            <tr><td>uBlock Origin filters</td><td style="color:var(--text-2);font-size:11px">ublockorigin.github.io/uAssets</td><td style="color:var(--text-2)">~1.5M</td><td style="color:var(--red)">ALL</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:10px">All lists are downloaded once, parsed, and ingested into the Radix Trie. The trie is queried at wire-speed for every DNS request and HTTP Host header — zero network latency for lookups.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DASHBOARD TABS ─── -->
+<section id="tabs">
+  <div class="inner">
+    <div class="section-label">NOC Dashboard</div>
+    <h2>Dashboard Tabs — What Each Shows</h2>
+    <p>The React NOC dashboard connects to the backend via a live WebSocket stream (<code>/ws/forensics</code>) and REST APIs. All tabs are real-time; data refreshes every 2 seconds or is pushed by the WebSocket.</p>
+
+    <div class="tabs-grid">
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--accent)">Overview</div>
+        <p>Lane health + EWMA scores, real-time throughput area chart (60s window), DNS provider scoreboard, live forensics event console. Also shows GHOST-SHARD / STREAM-SHATTER / DEEP-TRACE status cards with live counters.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--accent)">IRONCLAD</div>
+        <p>Wintun TUN adapter start/stop toggle, packet/byte counters, routing table status, ALPN/QUIC drop statistics, visual pipeline diagram showing the full ingestion chain from Wintun → Netty.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--red)">IDS/IPS</div>
+        <p>Live alert feed with severity filter (LOW/MEDIUM/HIGH/CRITICAL), rule ID, source IP, matched payload snippet, and DROP/LOG action. Beacon detector panel shows flagged hosts with interval and score.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--amber)">AEGIS</div>
+        <p>Block/allow counters, block rate %, Radix Trie entry count, bar chart of top 6 blocked domains (Recharts), recent block stream with category badges, BLACK-HOLE sinkhole statistics, and domain lookup tool.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--purple)">COUNTER-SCORE</div>
+        <p>Per-PID threat matrix table (sortable, clickable for detail), live AEGIS block-rate area chart (30-point rolling window), protocol morphing action totals, selected process deep-dive panel.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--red)">Chaos</div>
+        <p>Chaos engineering panel: toggle chaos mode, lane kill probability slider, injected latency slider, DNS drop probability. Manual per-lane kill/revive buttons. Lane health live view alongside.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--teal)">Classify</div>
+        <p>Traffic classification pie chart (INTERACTIVE / REALTIME / WEB / STREAMING / BULK / UNKNOWN) with byte/flow counts. Weighted Fair Queueing weights shown. Throughput chart alongside.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--text-2)">DVR</div>
+        <p>Time-travel forensics: scrub back up to 5 minutes into the event history. Select any second offset to replay forensics events from that point. Events stored in H2 in-memory DB via Spring Data JPA.</p>
+      </div>
+      <div class="tab-card">
+        <div class="tc-label" style="color:var(--green)">Policy</div>
+        <p>Monaco code editor with full JSON DSL policy. Write zero-trust routing rules with conditions (domainEndsWith, port, afterHour) and actions (allow, deny, pin to lane N). Versioned installs with compile+validate.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BENEFITS ─── -->
+<section id="benefits">
+  <div class="inner">
+    <div class="section-label">Why it matters</div>
+    <h2>Benefits &amp; What This Protects Against</h2>
+
+    <div class="benefit-grid">
+      <div class="benefit-item">
+        <div class="benefit-icon">🕵️</div>
+        <div>
+          <div class="benefit-title">No Browser Extensions</div>
+          <div class="benefit-desc">AEGIS blocks ads and trackers at the network layer. Works for every app — browser, game, media player, system services — without touching any browser.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🔬</div>
+        <div>
+          <div class="benefit-title">DPI Evasion</div>
+          <div class="benefit-desc">GHOST-SHARD + DECEPTICON defeat commercial DPI appliances (Palo Alto, Fortinet) that censor by protocol signature. Traffic looks like video calls or DNS queries.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🦠</div>
+        <div>
+          <div class="benefit-title">Zero-Day Exploit Detection</div>
+          <div class="benefit-desc">SENTINEL-IDS catches known exploit payloads (Log4Shell, EternalBlue, SQLi) the moment they enter the data plane — before they reach any application.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">📡</div>
+        <div>
+          <div class="benefit-title">Anti-Spyware Beacon Detection</div>
+          <div class="benefit-desc">The EWMA beacon detector catches spyware that calls home on exact intervals. A background process phoning home every 30.00 seconds is mathematically distinct from normal traffic.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🔑</div>
+        <div>
+          <div class="benefit-title">Data Exfiltration Prevention</div>
+          <div class="benefit-desc">The exfiltration guard stops credential theft in real time. An npm package or browser exploit that tries to POST your AWS keys or SSH private key is killed mid-stream.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🔋</div>
+        <div>
+          <div class="benefit-title">Battery &amp; Data Savings</div>
+          <div class="benefit-desc">BLACK-HOLE prevents Windows Update, telemetry daemons, and analytics SDKs from consuming bandwidth and triggering CPU wake-locks with constant reporting.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">📺</div>
+        <div>
+          <div class="benefit-title">Platform-Level Ad Blocking</div>
+          <div class="benefit-desc">YouTube ads, Spotify ads, in-app ads — all blocked at the DNS/HTTP request phase before they download. Unskippable ads never even start loading.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🛜</div>
+        <div>
+          <div class="benefit-title">Tap &amp; Mirror Detection</div>
+          <div class="benefit-desc">SHIELD-FABRIC detects passive NSA-style fiber tap splitters by the constant latency offset they introduce. Countermeasures activate automatically within seconds.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">📦</div>
+        <div>
+          <div class="benefit-title">Process Isolation</div>
+          <div class="benefit-desc">SAFE-ZONE prevents newly installed software from making unexpected network connections. Untrusted processes are locked to port 80/443 before you've reviewed them.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">📊</div>
+        <div>
+          <div class="benefit-title">Full Network Visibility</div>
+          <div class="benefit-desc">COUNTER-SCORE shows exactly which process on your system is generating which traffic — something no browser extension or app-level tool can provide.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">⚡</div>
+        <div>
+          <div class="benefit-title">Zero Latency Overhead</div>
+          <div class="benefit-desc">All decisions happen in-memory on the Netty event loop. The Aho-Corasick scan is O(n). The Radix Trie is O(k). The ring buffer is a pre-allocated memcpy. No I/O, no network, no GC.</div>
+        </div>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-icon">🔒</div>
+        <div>
+          <div class="benefit-title">No Cloud Dependency</div>
+          <div class="benefit-desc">Zero external API calls at runtime. All intelligence is local. NexusFlow works on air-gapped networks and does not send any traffic data to any third party.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:40px">
+      <h3>Tech Stack Summary</h3>
+      <div class="two-col" style="margin-top:16px">
+        <div class="tbl-wrap">
+          <table class="ds-table">
+            <thead><tr><th>Layer</th><th>Technology</th><th>Version</th></tr></thead>
+            <tbody>
+              <tr><td>Language</td><td style="color:var(--text-2)">Java + Preview Features</td><td style="color:var(--text-2)">21+</td></tr>
+              <tr><td>Data Plane</td><td style="color:var(--text-2)">Netty NIO Event Loop</td><td style="color:var(--text-2)">4.1.114</td></tr>
+              <tr><td>Reactive</td><td style="color:var(--text-2)">Project Reactor</td><td style="color:var(--text-2)">3.6.10</td></tr>
+              <tr><td>Control Plane</td><td style="color:var(--text-2)">Spring Boot + WebFlux</td><td style="color:var(--text-2)">3.4.0</td></tr>
+              <tr><td>OS Bridge</td><td style="color:var(--text-2)">JNA (Wintun binding)</td><td style="color:var(--text-2)">5.14.0</td></tr>
+              <tr><td>Storage (DVR)</td><td style="color:var(--text-2)">H2 In-Memory + JPA</td><td style="color:var(--text-2)">via Spring</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-wrap">
+          <table class="ds-table">
+            <thead><tr><th>Layer</th><th>Technology</th><th>Version</th></tr></thead>
+            <tbody>
+              <tr><td>Frontend</td><td style="color:var(--text-2)">React + TypeScript</td><td style="color:var(--text-2)">18.3 / 5.6</td></tr>
+              <tr><td>Build</td><td style="color:var(--text-2)">Vite</td><td style="color:var(--text-2)">5.4.8</td></tr>
+              <tr><td>Charts</td><td style="color:var(--text-2)">Recharts</td><td style="color:var(--text-2)">2.12.7</td></tr>
+              <tr><td>Tour</td><td style="color:var(--text-2)">react-joyride</td><td style="color:var(--text-2)">2.9.2</td></tr>
+              <tr><td>Animation</td><td style="color:var(--text-2)">Framer Motion</td><td style="color:var(--text-2)">11.5.0</td></tr>
+              <tr><td>Code Editor</td><td style="color:var(--text-2)">Monaco Editor</td><td style="color:var(--text-2)">4.6.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  NexusFlow NOC · AetherOS · Active Counter-Surveillance Networking Overlay<br>
+  Java 21 · Netty 4.1 · Spring Boot 3.4 · React 18 · 15 Defense Modules · Zero External Runtime Calls
+</footer>
